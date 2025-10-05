@@ -6,33 +6,63 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   TF_VERSION: "1.13.0"
   TF_DIR: envs/prod
 
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   plan:
-    name: fmt/validate/plan
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Validate CF_RECORDS_JSON is valid JSON
-        shell: bash
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            ${{ env.TF_DIR }}/.terraform
+          key: ${{ runner.os }}-tf-${{ env.TF_VERSION }}-${{ hashFiles(format('{0}/**/*.tf', env.TF_DIR)) }}
+          restore-keys: |
+            ${{ runner.os }}-tf-${{ env.TF_VERSION }}-
+
+      - name: Install TFLint
+        run: |
+          curl -sSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1
+
+      - name: Terraform test (module)
+        working-directory: modules/dns_records
+        run: |
+          terraform init -input=false
+          terraform test
+
+      - name: Validate CF_RECORDS_JSON
         run: |
           python - <<'PY'
           import json, os, sys
-          val = os.environ.get('CF_RECORDS_JSON', '')
           try:
-              j = json.loads(val)
-              assert isinstance(j, list), "CF_RECORDS_JSON must be a JSON array []"
+              j = json.loads(os.environ['CF_RECORDS_JSON'])
+              assert isinstance(j, list)
           except Exception as e:
               print("CF_RECORDS_JSON invalid:", e)
               sys.exit(1)
@@ -42,33 +72,17 @@ jobs:
 
       - name: Render auto.tfvars.json
         working-directory: ${{ env.TF_DIR }}
-        shell: bash
         run: |
-          mkdir -p .
           cat > auto.tfvars.json <<'JSON'
-          {
-            "zone_id": "${{ secrets.CF_ZONE_ID }}",
-            "records": ${{ secrets.CF_RECORDS_JSON }}
-          }
+          { "zone_id": "${{ secrets.CF_ZONE_ID }}", "records": ${{ secrets.CF_RECORDS_JSON }} }
           JSON
-
-      - name: Verify tfvars presence
-        working-directory: ${{ env.TF_DIR }}
-        shell: bash
-        run: |
-          test -f auto.tfvars.json || (echo "auto.tfvars.json missing" && exit 1)
-          python - <<'PY'
-          import json, sys
-          with open('auto.tfvars.json','r') as f:
-              json.load(f)
-          PY
 
       - name: Terraform fmt
         run: terraform fmt -recursive
 
       - name: Terraform init
         working-directory: ${{ env.TF_DIR }}
-        run: terraform init
+        run: terraform init -input=false
 
       - name: Terraform validate
         working-directory: ${{ env.TF_DIR }}
@@ -80,4 +94,4 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_zone_id: ${{ secrets.CF_ZONE_ID }}
           TF_VAR_records: ${{ secrets.CF_RECORDS_JSON }}
-        run: terraform plan -input=false
+        run: terraform plan -input=false -no-color
