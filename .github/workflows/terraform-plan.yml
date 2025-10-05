@@ -47,8 +47,9 @@ jobs:
           tflint --init
           tflint
 
-      - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1
+      - name: Run tfsec (container)
+        run: |
+          docker run --rm -v "$PWD":/src aquasec/tfsec:latest /src
 
       - name: Terraform test (module)
         working-directory: modules/dns_records
