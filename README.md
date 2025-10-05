@@ -2,34 +2,42 @@
 
 ![Terraform](https://img.shields.io/badge/Terraform-1.13.x-623CE4?logo=terraform)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-5.10-orange?logo=cloudflare)
-![GitHub Actions](https://img.shields.io/github/actions/workflow/status/yourusername/terraform-cloudflare-dns-automation/terraform-plan.yml?label=CI%20Status&logo=githubactions)
+![CI Status](https://img.shields.io/github/actions/workflow/status/cchacon-dev/terraform-cloudflare-dns-automation/terraform-plan.yml?branch=main&label=CI%20Status&logo=githubactions)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-Automated and reusable **Cloudflare DNS Infrastructure as Code (IaC)** project — designed for homelab environments but built with **enterprise-grade practices**.  
-It provisions and manages DNS records declaratively using **Terraform**, integrates with **GitHub Actions** for CI (plan-only), and is structured for future GitOps, remote state, and multi-environment expansion.
+A **learning project** to explore Infrastructure as Code (IaC) with **Terraform** and **Cloudflare**.  
+This is my **first Terraform project**, created as part of my homelab journey and DevOps learning path.  
+The goal is to understand how automation, reproducibility, and security are achieved in real DevOps environments — starting small and improving over time.
 
 ---
 
 ## 📖 Overview
 
-This repository demonstrates how to manage Cloudflare DNS records safely and reproducibly using Terraform, following real DevOps/Platform Engineering workflows.  
-It’s a clean, minimal, and extensible setup that you can reuse for:
+This repository automates Cloudflare DNS management using Terraform.  
+It’s built step by step, following enterprise practices while keeping it simple and educational.
 
-- Personal **homelabs** or self-hosted services (Jellyfin, Pi-hole, Vaultwarden, etc.)
-- **Small-scale infrastructures** that need version-controlled DNS automation
-- Educational or portfolio purposes to showcase **Terraform + GitHub Actions best practices**
-
-At this stage, the repo includes:
-
-- ✅ Local environment (`envs/prod/`)
-- ✅ Cloudflare provider v5
-- ✅ CI pipeline in GitHub Actions (format / validate / plan)
-- ✅ Secrets managed via GitHub Repository Secrets
-- 🚫 *No remote state or apply yet (next steps)*
+You can reuse it to:
+- Learn Terraform and Cloudflare Provider basics  
+- Create and manage DNS records as code  
+- Integrate Terraform with GitHub Actions (CI/CD)  
+- Use as a starter template for homelabs or small infrastructure projects  
 
 ---
 
-## 🧱 Current Project Structure
+## 🧱 Current Status
+
+| Feature | Status |
+|----------|--------|
+| Local Terraform configuration (`envs/prod`) | ✅ Working |
+| Cloudflare Provider v5 | ✅ Configured |
+| GitHub Actions workflow (plan-only) | ✅ Running successfully |
+| Repository Secrets integration | ✅ Configured |
+| Terraform Tests and Linters | 🔜 Coming soon |
+| Remote State + Apply workflow | 🔜 Future improvement |
+
+---
+
+## 🧩 Project Structure
 
 ```
 terraform-cloudflare-dns-automation/
@@ -38,7 +46,7 @@ terraform-cloudflare-dns-automation/
 │       ├── main.tf
 │       ├── providers.tf
 │       ├── versions.tf
-│       └── terraform.tfvars        # local only (not committed)
+│       └── terraform.tfvars        # local only (ignored)
 ├── .github/
 │   └── workflows/
 │       └── terraform-plan.yml
@@ -52,11 +60,11 @@ terraform-cloudflare-dns-automation/
 
 | Requirement | Version | Notes |
 |--------------|----------|-------|
-| **Terraform** | ≥ 1.13.x | CLI installed locally or via CI |
+| **Terraform** | ≥ 1.13.x | Installed locally or used in CI |
 | **Cloudflare Provider** | ≥ 5.10.x | Installed automatically on `init` |
-| **Cloudflare Account** | Active domain added | Needed to manage DNS |
+| **Cloudflare Account** | With an active domain | Needed to manage DNS |
 | **Cloudflare API Token** | Scoped to your zone | Permissions: `Zone:Read`, `DNS:Edit` |
-| **GitHub Account** | For CI/CD workflow | Optional for local-only usage |
+| **GitHub Account** | For running CI/CD | Optional for local use |
 
 ---
 
@@ -91,78 +99,67 @@ terraform-cloudflare-dns-automation/
 
 ---
 
-## 🤖 CI/CD: GitHub Actions Workflow
+## 🤖 GitHub Actions (CI/CD)
 
-The workflow `.github/workflows/terraform-plan.yml` runs automatically on each push or pull request.
+This repository includes a **plan-only workflow** that runs on every push or pull request.  
+It validates and formats Terraform code, then shows the **plan output** in Actions logs.
 
-### 🔐 Required Repository Secrets
+### Required Secrets
 
 | Secret Name | Description |
 |--------------|-------------|
-| `CLOUDFLARE_API_TOKEN` | API token with DNS:Edit + Zone:Read permissions |
-| `CF_ZONE_ID` | The Zone ID for your domain |
-| `CF_RECORDS_JSON` | JSON array of DNS records for plan preview |
-
-### 🧠 What it does
-
-- Runs **terraform fmt**, **validate**, and **plan**
-- Generates `auto.tfvars.json` dynamically from repository secrets
-- Does **not** apply changes (read-only CI step for review)
-- Plan output appears in the Actions logs for auditing
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with `Zone:Read` and `DNS:Edit` |
+| `CF_ZONE_ID` | Zone ID for your domain |
+| `CF_RECORDS_JSON` | JSON array of DNS records (for plan preview) |
 
 ---
 
-## 🚀 Next Steps (Planned Roadmap)
+## 🚀 Next Steps
 
-| Stage | Feature | Description |
-|--------|----------|-------------|
-| ✅ **Step 1** | Local Terraform + Cloudflare provider | Working successfully |
-| ✅ **Step 2** | GitHub Actions “plan-only” CI | Automatic validation & plan per PR |
-| 🔜 **Step 3** | Remote state backend (Terraform Cloud / S3 / Azure) | Enables shared state and CI apply |
-| 🔜 **Step 4** | “Apply” workflow with approvals (GitHub Environments) | Safe promotion to production |
-| 🔜 **Step 5** | Cloudflare Tunnel automation via Terraform + Ansible | Securely expose homelab services |
-| 🔜 **Step 6** | Multi-environment setup (`dev`, `staging`, `prod`) | Environment-specific secrets & branching |
-
----
-
-## 🧠 Why this structure
-
-| Principle | Applied Practice |
-|------------|-----------------|
-| **Reproducibility** | Pinned versions, modular layout, declarative IaC |
-| **Security** | No secrets in repo, GitHub Secrets used for tokens |
-| **Scalability** | Ready for multiple environments and CI stages |
-| **Reusability** | Base template usable for any domain or homelab |
-| **Transparency** | Plan-only workflow allows visible infra diffs before merges |
+| Stage | Goal |
+|--------|------|
+| 🧩 Step 3 | Add Terraform tests and linting (TFLint, tfsec) |
+| ☁️ Step 4 | Implement remote state backend |
+| 🔐 Step 5 | Add “apply” workflow with approval gates |
+| 🌐 Step 6 | Cloudflare Tunnel automation (Terraform + Ansible) |
+| 🧱 Step 7 | Multi-environment setup (dev/stage/prod) |
 
 ---
 
-## 🧪 Example Use Cases
+## 💡 Lessons Learned
 
-- Add or remove DNS records safely across multiple domains  
-- Manage CNAMEs for self-hosted services via GitOps  
-- Learn Terraform, Cloudflare API, and CI/CD patterns  
-- Template starting point for **Platform Engineering portfolios**
+- How Terraform uses variables and providers  
+- Why version pinning and `.gitignore` rules are critical  
+- How to use GitHub Actions securely with secrets  
+- Difference between **plan-only** CI and **apply** pipelines  
+- First steps toward an enterprise-style IaC workflow  
+
+---
+
+## 🧠 Why I Built This
+
+> “I wanted to understand how real DevOps workflows work — not just in theory, but hands-on.”  
+>  
+> This project is part of my **homelab learning journey**, combining Terraform, Cloudflare, and GitHub Actions to practice IaC automation.
 
 ---
 
 ## 📚 References
 
-- [Terraform Cloudflare Provider Docs](https://registry.terraform.io/providers/cloudflare/cloudflare/latest)
-- [Terraform Language Documentation](https://developer.hashicorp.com/terraform/language)
+- [Terraform Cloudflare Provider](https://registry.terraform.io/providers/cloudflare/cloudflare/latest)
+- [Terraform Docs](https://developer.hashicorp.com/terraform)
 - [Cloudflare Developer Hub](https://developers.cloudflare.com/)
 - [GitHub Actions for Terraform](https://github.com/hashicorp/setup-terraform)
-- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
 
 ---
 
 ## 🧑‍💻 Author
 
 **Carlos Chacón**  
-> Homelab & DevOps enthusiast • learning-by-doing approach • automation-first mindset  
+> Homelab & DevOps enthusiast — learning-by-doing approach — automation-first mindset  
 
-If you find this useful, feel free to **fork**, **star**, or reuse it for your own homelab or infrastructure projects.
+If you’re also learning Terraform or building your own homelab, feel free to **fork** this repo, **open issues**, or share feedback!
 
 ---
 
-**License:** MIT — free to use, adapt, and contribute.
+**License:** MIT — free to learn, reuse, and adapt.
