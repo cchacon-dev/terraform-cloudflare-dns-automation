@@ -1,0 +1,52 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  TF_VERSION: "1.13.x"
+  TF_DIR: envs/prod
+
+jobs:
+  plan:
+    name: fmt/validate/plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create auto.tfvars.json from secrets
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          cat > auto.tfvars.json <<'EOF'
+          {
+            "zone_id": "${{ secrets.CF_ZONE_ID }}",
+            "records": ${{ secrets.CF_RECORDS_JSON }}
+          }
+          EOF
+
+      - name: Terraform fmt
+        run: terraform fmt -recursive
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: terraform plan -input=false
