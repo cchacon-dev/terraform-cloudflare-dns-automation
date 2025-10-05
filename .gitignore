@@ -1,0 +1,15 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Local / secret vars
+*.tfvars
+*.auto.tfvars
+.env
+
+# OS / editor junk
+.DS_Store
+.idea/
+.vscode/
