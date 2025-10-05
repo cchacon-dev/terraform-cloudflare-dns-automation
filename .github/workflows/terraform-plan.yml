@@ -25,13 +25,16 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Validate CF_RECORDS_JSON is valid JSON
+        shell: bash
         run: |
           python - <<'PY'
           import json, os, sys
+          val = os.environ.get('CF_RECORDS_JSON', '')
           try:
-              json.loads(os.environ['CF_RECORDS_JSON'])
+              j = json.loads(val)
+              assert isinstance(j, list), "CF_RECORDS_JSON must be a JSON array []"
           except Exception as e:
-              print("CF_RECORDS_JSON is not valid JSON:", e)
+              print("CF_RECORDS_JSON invalid:", e)
               sys.exit(1)
           PY
         env:
@@ -41,12 +44,24 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         shell: bash
         run: |
+          mkdir -p .
           cat > auto.tfvars.json <<'JSON'
           {
             "zone_id": "${{ secrets.CF_ZONE_ID }}",
             "records": ${{ secrets.CF_RECORDS_JSON }}
           }
           JSON
+
+      - name: Verify tfvars presence
+        working-directory: ${{ env.TF_DIR }}
+        shell: bash
+        run: |
+          test -f auto.tfvars.json || (echo "auto.tfvars.json missing" && exit 1)
+          python - <<'PY'
+          import json, sys
+          with open('auto.tfvars.json','r') as f:
+              json.load(f)
+          PY
 
       - name: Terraform fmt
         run: terraform fmt -recursive
@@ -63,4 +78,6 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_zone_id: ${{ secrets.CF_ZONE_ID }}
+          TF_VAR_records: ${{ secrets.CF_RECORDS_JSON }}
         run: terraform plan -input=false
